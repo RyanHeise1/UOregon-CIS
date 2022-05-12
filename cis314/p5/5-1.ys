@@ -1,0 +1,86 @@
+# Execution starts at addr 0
+	.pos 0
+	irmovq stack, %rsp  # set stack pointer to %rsp
+	call main  # calls main function to run program
+	halt  # end program
+
+# Array of 10 elems
+	.align 8
+array:
+	.quad 0x000000000001
+	.quad 0x000000000002
+	.quad 0x000000000003
+	.quad 0x000000000004
+	.quad 0x000000000005
+	.quad 0x000000000006
+	.quad 0x000000000007
+	.quad 0x000000000008
+	.quad 0x000000000009
+	.quad 0x000000000010
+
+main:
+	irmovq array, %rdi
+	irmovq $10, %rsi  # 10 is the size of the array
+	call bubblesort  # calls sort fcn to sort array
+	ret  # return
+
+# swap(long *xp, long *yp) x: %rdi, y: %rsi
+swap:
+	mrmovq %rdi, %r12  # move xp to temp variable
+	mrmovq %rsi, %r13  # move yp to temp variable
+	rmmovq %r12, %rsi  # set value of rsi to value of rcx
+	rmmovq %r13, %rdi  # set value of rdi to value of rbx
+	ret
+
+# long bubblesort(long *start, long max)
+bubblesort:
+	irmovq $8, %r8  # move constant 8 to register 8
+	irmovq $1, %r9  # move constant 1 to r9
+	rrmovq %rdi, %rax  # %rax would == array[0]
+	rrmovq %rsi, %rcx  # %rcx would be the max element
+
+top_loop:
+	rrmovq %rax, %r10  # gets the &array[0]
+    xorq %rdx, %rdx    
+    xorq %rbx, %rbx  
+
+ bubble_loop
+    mrmovq (%r10), %r13 
+    rrmovq %r10, %rdi  
+    addq %r8, %r10
+    mrmovq (%r10), %r14
+    rrmovq %r10, %rsi
+    subq %r8, %r10  # subtract r8 and r10
+    subq %r13, %r14  # subtract r13 and r14
+    jg bubble_skip
+
+bubble_swap:
+    irmovq $1, %rbx
+    pushq %r13  # move registers onto stack
+    pushq %r12
+    call swap  # swap two pointers
+    popq %r12  #  pop r12 and r13 off the stack 
+    popq %r13
+    
+bubble_skip:
+    addq %r8, %r10  # move to the next element
+    addq %r9, %rdx
+
+bubblesort_test_scan:
+    rrmovq %rdx, %r14
+    subq %rcx, %r14
+    jne bubble_loop  # if no, jump to bubble_loop
+
+bubble_test_swap
+	rrmovq %rbx, %r14
+    subq %r9, %r14
+    jge top_loop
+    brk
+    ret
+
+# stack starts here and goes to lower addresses
+    .pos 0x200
+stack:
+
+
+

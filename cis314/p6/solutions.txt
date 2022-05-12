@@ -1,0 +1,9 @@
+6-2.
+	a. adds %xmn0, %xmnl
+	   addq $1, %rdx
+
+	b. The best case for CPE is 3 becuase we need to free a, b, and c
+
+	c. 6-2c.c
+
+	d. 6-2d solutions.pdf
