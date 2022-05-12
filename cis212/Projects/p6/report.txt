@@ -1,0 +1,8 @@
+Name: Ryan Heise
+Duckid: rheise
+Help: See Below
+Office hours friday with Madison to figure out printing error with part 1
+https://How-do-I-extract-an-integer-from-the-string-in-C
+	used this to figure out how to extract multi digit numbers from a string
+
+State of Submission: complete with no memory leaks

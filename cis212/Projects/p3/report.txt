@@ -1,0 +1,9 @@
+Name: Ryan Heise
+Duckid: rheise
+Help: See below
+Office hours: Madison Werries (Fri 4PM) helped me understand better ways to exit a block of code if a file was not there
+Office hours: Jared Hall (Tuesday 1PM) helped me understand how to loop over argv and find the string and file
+Annotated Solution P2: instead of making a seperate function for stdin, i used the technique where you pass stdin into uniqFile
+
+
+State of Submission: Test cases pass and tested in valgrind. No errors :)

@@ -1,0 +1,8 @@
+Name: Ryan Heise
+Duckid: rheise
+Help: See Below
+Book pages 259-260 with enqueue and dequeue
+Eliot Terner helped me figure out a memory leak in llistqueue.c
+	also helped me on how to link llistqueue.c to the Makefile
+
+State of Submission: complete with no memory leaks

@@ -1,0 +1,7 @@
+Name: Ryan Heise
+Duckid: rheise
+Help: See Below
+Office hours with Jared on Friday and he helped with pseudocode with file processing
+Chance C helped with some memory leak issues
+
+State of Submission: complete with no memory leaks

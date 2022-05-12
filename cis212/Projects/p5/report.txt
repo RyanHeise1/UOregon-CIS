@@ -1,0 +1,4 @@
+Name: Ryan Heise
+Duckid: rheise
+Help: Book pages (165-175)
+State of Submission: complete with no memory leaks + Extra credit

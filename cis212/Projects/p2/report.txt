@@ -1,0 +1,6 @@
+name: Ryan Heise
+duck id: rheise
+help: Elias c explained some logic errors with my printLine
+		   Chance helped me with an error trying to get the file. I had argv[-1] instead of the code i have now
+
+current state: complete with no leaks

@@ -1,0 +1,8 @@
+Name: Ryan Heise
+Duckid: rheise
+Help: See below
+StringADT Video posted on canvas
+
+Elliot Terner helped me understand how the s flag works and how to not print the lines with "North East" having the same acronym as NE
+
+State of submission: Works and no memory leaks

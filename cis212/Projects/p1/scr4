@@ -1,0 +1,5 @@
+./subst -g St. Street | 
+./subst -g Dr. Drive |
+./subst -g Rd. Road |
+./subst -g Ave. Avenue |
+./subst -g Pkwy. Parkway
