@@ -1,0 +1,100 @@
+On separate lines, outline the logical steps you'd follow to solve the problem. 
+Steps might include prompt for year, prompt for day of year, validate year, 
+calculate month, print month, day, year, etc.
+
+
+
+1. prompt user for year 
+    if year is <= 0 then produce an error
+        else keep going
+2. I need to call the is_leap_year fcn like i did in the calendar lab
+    ex: leap_year = is_leap_year(num)
+
+3. A leap year has 366 days
+4. Normal years have 365
+
+5. prompt user for days in range of 365/ 366 (depending on leap year or not)
+    if the day entered is <= 0 error
+        else keep going
+
+6. I need to find a way to specify the number of days in a month
+    ex: Feb has 29 days on a leap year and 27 on a normal year
+7. Specify the months
+
+8. if the year is a leap year then i need to add one day to it 
+    if its a leap year then febuary goes up one day
+
+9. Figure out a way to find the respective month for the day...
+
+10. return the month, day, and year 
+
+
+
+
+day = input year
+if day < 0
+    error
+
+
+
+
+
+
+functions i need:
+
+1. start()
+    void fnc that encapsulates all of my code
+        will use this is start code at the end 
+
+2. is_leap_year(year)
+    fun defined in lab 4 
+        code already done
+
+2. valid_year(year)
+    produces true/false if year is valid/invalid
+        need to use true/false
+
+3. valid_day_of_year(year, valid_day_of_year)
+    check if day is valid and produces true/false 
+
+4. input_year()
+    code that prompts user for the year
+
+5. input_day_of_year(year)
+    prompt user of day of the year 
+        ex: 364
+    should return 0 if day is invalifd
+    I should be calling valid_day_of_year and valid_year
+
+6. get_days_in_year(year)
+    returns 0 for invalid year 
+    or
+    num of days as an int
+
+7. valid_month(month)
+    returns true if month is valid (ex: 0 < month <= 12)
+    or
+    false for an invalid month
+        "Month must be > 0 " and "Month must be <= 12"
+
+8. translate_month(month)
+    returns empty string for invalid month  
+        call valid_month()
+    or
+    the month as a fill string
+
+9. get_days_in_month(year,month)
+    returns num of days in a month as an int    
+        I need to account of a leap year    
+            if leap year + 1 days 
+    or retunr 0 if month or year is invalid 
+
+10. valid_day(year, month, day)
+    returns flase if the year,month, OR day is invalid 
+    or
+    true if everything checks out
+
+11. get_date_string(year, month, day)
+    returns empty string if year,month, OR day is invalid 
+    or
+    string formatted as Month Day, year (Ex: December 1, 2018)
