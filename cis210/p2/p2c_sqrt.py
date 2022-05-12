@@ -1,7 +1,6 @@
 '''
-Title: Project 2-c - Sqrt function 
+Title: Project 2-c - Sqrt function
 
-Author: Ryan Heise
 
 Credits: N/A
 '''
@@ -56,5 +55,3 @@ def sqrt_compare_mail():
     sqrt_compare(625, 10)
     sqrt_compare(10000, 5)
     sqrt_compare(10000, 10)
-    
-

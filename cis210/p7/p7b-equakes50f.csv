@@ -1,0 +1,19 @@
+time,latitude,longitude,depth,mag,magType,nst,gap,dmin,rms,net,id,updated,place,type,horizontalError,depthError,magError,magNst,status,locationSource,magSource
+2010-07-28T16:12:05.610Z,43.756,-125.815,10,5.2,mwc,193,143.9,,0.93,us,usp000hh0t,2017-08-01T16:34:36.951Z,"off the coast of Oregon",earthquake,,,,,reviewed,us,gcmt
+1993-12-04T22:15:19.720Z,42.2915,-122.0086667,4.797,5.1,md,126,113,,0.11,uw,uw10316468,2020-09-21T18:41:10.842Z,"Oregon",earthquake,0.468,0.56,0.04,7,reviewed,uw,uw
+1993-09-21T05:45:35.230Z,42.3575,-122.0583333,8.53,6,md,234,128,,0.08,uw,uw10313838,2020-09-21T18:40:59.944Z,"Oregon",earthquake,0.4,0.85,0.02,3,reviewed,uw,uw
+1993-09-21T03:28:55.630Z,42.3161667,-122.0266667,8.56,5.9,md,201,129,,0.09,uw,uw10313718,2020-09-21T18:40:49.024Z,"Oregon",earthquake,0.441,0.93,0.02,3,reviewed,uw,uw
+1993-03-25T13:34:35.440Z,45.0351667,-122.6065,19.608,5.6,md,40,67,0.2067,0.39,uw,uw10306313,2020-09-21T18:40:40.052Z,"Oregon",earthquake,0.934,2.84,,2,reviewed,uw,uw
+1980-05-18T15:32:11.430Z,46.2073333,-122.188,1.51,5.7,md,18,62,0.008296,0.22,uw,uw10084803,2020-04-16T20:20:41.892Z,"Mount St. Helens area, Washington",earthquake,0.682,0.56,0.08,1,reviewed,uw,uw
+1980-04-22T19:28:18.710Z,46.2026667,-122.182,-0.523,5,md,21,57,0.03886,0.18,uw,uw10084513,2018-06-04T20:43:45.000Z,"Mount St. Helens area, Washington",earthquake,0.439,0.62,0.07,1,reviewed,uw,uw
+1980-04-18T21:16:02.120Z,46.208,-122.1825,-0.223,5,md,22,59,0.04013,0.19,uw,uw10082403,2018-06-04T20:43:45.000Z,"Mount St. Helens area, Washington",earthquake,0.46,0.73,0.09,1,reviewed,uw,uw
+1980-04-14T13:49:03.760Z,46.2035,-122.1973333,0.515,5.2,md,21,55,0.0289,0.19,uw,uw10080808,2018-06-04T20:43:45.000Z,"Mount St. Helens area, Washington",earthquake,0.042,0.05,0.13,1,reviewed,uw,uw
+1980-04-08T19:29:02.910Z,46.2098333,-122.1958333,-0.561,5.1,md,19,63,0.03255,0.39,uw,uw10077923,2016-07-24T21:25:35.450Z,"Mount St. Helens area, Washington",earthquake,1.374,1.85,0.07,1,reviewed,uw,uw
+1976-12-19T19:00:59.500Z,42.752,-125.603,15,5.4,mb,,,,,us,usp0000kuc,2014-11-06T23:21:38.664Z,"offshore Oregon",earthquake,,,,,reviewed,us,us
+1975-07-29T01:48:16.200Z,43.687,-126.103,33,5.2,mb,,,,,us,usp0000c7e,2014-11-06T23:21:31.509Z,"off the coast of Oregon",earthquake,,,,,reviewed,us,us
+1973-06-16T14:43:47.500Z,44.98,-125.774,33,5.6,mb,,,,,us,usp000026k,2018-06-04T20:43:45.000Z,"off the coast of Oregon",earthquake,,,,,reviewed,us,us
+1962-11-06T03:36:44.400Z,45.642,-122.588,16,5.18,mw,,,,,ushis,ushis2577,2018-06-04T20:43:45.000Z,"Portland urban area, Washington",earthquake,,,,,reviewed,ushis,yp
+1961-09-17T15:55:56.100Z,46.023,-122.122,7,5.1,ml,,,,,ushis,ushis2517,2018-06-04T20:43:45.000Z,"Washington",earthquake,,,,,reviewed,ushis,gw
+1960-11-08T11:36:27.000Z,44.9,-125.2,,5,ml,,,,,ushis,ushis2469,2018-06-04T20:43:45.000Z,"offshore Oregon",earthquake,,,,,reviewed,ushis,brk
+1953-12-16T04:32:12.000Z,45.5,-122.7,,5,uk,,,,,ushis,ushis1907,2018-06-04T20:43:44.000Z,"Portland urban area, Oregon",earthquake,,,,,reviewed,ushis,epb
+1938-08-03T13:32:36.000Z,43.9,-126.2,,5.6,ms,,,,,ushis,ushis1206,2018-06-04T20:43:44.000Z,"off the coast of Oregon",earthquake,,,,,reviewed,ushis,gr

@@ -1,7 +1,6 @@
 '''
-Title: Project 2-b - Art Show 
+Title: Project 2-b - Art Show
 
-Author: Ryan Heise
 
 Credits: N/A
 '''
@@ -25,20 +24,20 @@ def jump(x, y):
 def art_show_main():
     '''
     draw a picture of a house and sun and flower
-    
+
     calls: house, sunshine, flower
 
     >>> art_show_main()
     '''
     reset()
-    clear() 
+    clear()
     title("A Sunny Day")
     speed('fastest')
     hideturtle()
     house()
     flower()
     sunshine()
-    
+
 
 def house():
     '''
@@ -85,11 +84,11 @@ def house():
     fd(30)
     end_fill()
 
-    
+
 def flower():
     '''
     Draws a flower
-    
+
     Runs when you call >>>art_show_main()
     '''
     # Draw stem of flower with increased width
@@ -102,7 +101,7 @@ def flower():
     # Change Pen color/width
     pencolor('black')
     pensize(1)
-    
+
     # For loop to draw triangles as leaves
     for i in range (10):
         fillcolor('red')
@@ -116,13 +115,13 @@ def flower():
         jump(-110,20)
         end_fill()
         rt(14)
-        
-        
-    
+
+
+
 def sunshine():
     '''
     Draws the sun
-    
+
     >Runs when you call >>> rt_show_main()
     '''
     # Draw Sun using for loop
@@ -134,4 +133,4 @@ def sunshine():
         jump(250,250)
         rt(10)
 
-    return 
+    return

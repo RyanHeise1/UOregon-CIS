@@ -79,4 +79,8 @@ def decode(pletter):
     else:
         return chr(int('1100011', 2))
 
-print(doctest.testmod())
+def main():
+    letter = 'c'
+    print(f'parity bit for {letter} is encode(letter)[0]')
+
+

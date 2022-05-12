@@ -1,7 +1,6 @@
 '''
-Title: Project 2-b - Python Variations 
+Title: Project 2-b - Python Variations
 
-Author: Ryan Heise
 
 Credits: N/A
 '''
@@ -27,8 +26,8 @@ def add_digits(n):
         n = int(n / 10)
     print('The sum of the digits in', original_number, 'is', sum)
 
-        
-    
+
+
 
 def profit(customers):
     '''
@@ -55,12 +54,12 @@ def profit_main():
     >>> Profit for 35 customers would be: $ 137.5
     >>> Profit for 40 customers would be: x
     '''
-    
-    for i in range(10):    
+
+    for i in range(10):
         customer_ammount = (i + 1) * 5
         net_profit = profit(customer_ammount)
         print('Profit for ', customer_ammount, 'customers would be: $', net_profit)
-        
+
 
 def gravity(v):
     '''

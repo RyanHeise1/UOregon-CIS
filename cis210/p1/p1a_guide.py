@@ -1,7 +1,6 @@
 '''
-Title: Project 1-a - UO Guide 
+Title: Project 1-a - UO Guide
 
-Author: Ryan Heise
 
 Credits: N/A
 '''
@@ -16,7 +15,7 @@ def uo_guide():
 
     >>> uo_guide()    runs the program
     '''
-    # set the scene 
+    # set the scene
     reset()
     clear()
     title('Welcome to Computer Science at the University of Oregon!')
@@ -24,10 +23,10 @@ def uo_guide():
     pensize(3)
     speed('slowest')
     bgpic('/Users/ryanheise/Documents/210/uo_campus_map.png') # File path to get to headder pic (UO Campus)
-    screensize(1195, 681)   
+    screensize(1195, 681)
 
     stamp() #mark start of route on EMU East lawn
-   
+
     # guide to Deschutes
     fd(5)
     rt(90)  #1st turn
@@ -43,8 +42,8 @@ def uo_guide():
     rt(90)  #6th turn
     fd(10)  #DESTINATION ARRIVED
     stamp() # Marks Location at Deschutes
-    
-    
+
+
     # guide to Price Science Commons
     pu()    #Pen Up for turtle to backtrack to 13th ave
     bk(10)
@@ -58,5 +57,5 @@ def uo_guide():
     rt(45)  # 2nd Turn
     fd(20)  #DISTINATION ARRIVED
     stamp()
-    
+
     return

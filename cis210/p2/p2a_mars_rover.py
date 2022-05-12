@@ -1,7 +1,6 @@
 '''
-Title: Project 2-a - Mars rover 
+Title: Project 2-a - Mars rover
 
-Author: Ryan Heise
 
 Credits: Starter code given in the Mars Rover assignment
 '''
@@ -24,7 +23,7 @@ def rover_loc():
 def water_content():
     '''
     Randomises a number between 1 and 290 to simulate finding water content on mars
-    
+
     Returns random number between 1 and 290 (ppm)
 
     >>> water_content()
@@ -37,7 +36,7 @@ def water_content():
 def temperature():
     '''
     Randomises a number between -178 and 1 to simulate finding the temp on mars
-    
+
     Returns number between -178 and 1
 
     >>> temperature()
@@ -55,24 +54,24 @@ def mars_explore():
     '''
     display_color = 'blue'
     dot(10, display_color)
-    
+
     xPos= rover_loc()
     yPos= rover_loc()
-    
+
     WaterContent= water_content()
     temp= temperature()
-    
+
     goto(xPos,yPos)
-    
+
     write(WaterContent, font= 8, align='left')
     write(temp, font= 8, align='right')
-    
+
     dot(10, display_color)
-    
+
     print(xPos, '\t', yPos, '\t', WaterContent, '\t', temp)
-    
-    
-    
+
+
+
 
 def mars_explore_main():
     '''
@@ -81,7 +80,7 @@ def mars_explore_main():
         then call mars_explore repeatedly
 
     >>> mars_explore_main()
-    ''' 
+    '''
     print('xpos', '\t',
           'ypos', '\t',
           'water', '\t',
