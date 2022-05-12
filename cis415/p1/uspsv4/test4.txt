@@ -1,0 +1,4 @@
+echo test yes
+ls -a
+date
+pwd

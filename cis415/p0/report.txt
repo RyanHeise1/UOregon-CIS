@@ -1,0 +1,6 @@
+Name: Ryan Heise
+Duck ID: 951757021
+Help: NULL
+
+State of submission: ./stringtest -h [1-17] work 100% No mem leaks on valgrind
+					 ./logntest -h [1-17] work 100% No mem leaks on valgrind 

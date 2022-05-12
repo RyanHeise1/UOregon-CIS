@@ -1,0 +1,5 @@
+echo test yes
+ls -a
+date
+pwd
+echo really long test
