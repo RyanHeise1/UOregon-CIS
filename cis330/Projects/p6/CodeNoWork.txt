@@ -1,0 +1,5 @@
+CODE NOT WORKING:
+    vcipher.cc (could not figure out the bug)
+    kcipher test3_error/running_key/running_key_2.txt (I think this is what is causing vcipher not to work)
+    Other than that, I think everything else is working (hopefully)
+    
