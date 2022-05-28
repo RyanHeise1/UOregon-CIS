@@ -1,0 +1,4 @@
+Name: Ryan Heise
+DuckID: rheise
+Title: CIS 415 Sprint Project 3
+State: All working besides dtsv3/4... Something is wrong with the timer thread

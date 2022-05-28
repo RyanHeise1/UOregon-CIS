@@ -30,6 +30,7 @@
 #include "BXP/bxp.h" 
 #include <valgrind/valgrind.h>
 #include "ADTs/prioqueue.h"
+#include "ADTs/queue.h"
 #include "ADTs/arraylist.h"
 #include "ADTs/hashmap.h"
 #include <assert.h> 
@@ -37,36 +38,39 @@
 #include <stdlib.h>
 #include <string.h> 
 #include <pthread.h>
-#include <time.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <sys/time.h>
 
 #define UNUSED __attribute__((unused)) 
 #define PORT 19999
 #define SERVICE "DTS"
 #define SHIFT 31L
-#define INTERVAL 10  // TODO: Does this number need to be bigger?
+#define USECS (10 * 1000)
 
 /*    Globals    */
 BXPService bxps; 
 const PrioQueue *pq = NULL;
 const Map *m;
-const ArrayList *al = NULL;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+//useconds_t musecs = USECS;
 int localID = 0;
 
 /*  Structs    */
 typedef struct Event{
     // Name of the event
-    char *event; 
+    int event; // 1 = OneShot: 2 = Repeat: 3 = Cancel 
     char *service;
     char *host;
     int intervals;
     int repeats; // if = 0 then it needs to go on FOREVER
     int local_id; 
     long unsigned int client_id; 
-    unsigned short int port;
+    unsigned int port;
     bool cancel;
 }Event;
 
-int cmp(UNUSED void *p1, UNUSED void *p2){
+int cmp(void *p1, void *p2){
     struct timeval *s1 = (struct timeval *)p1;
     struct timeval *s2 = (struct timeval *)p2;
     int c;
@@ -74,9 +78,14 @@ int cmp(UNUSED void *p1, UNUSED void *p2){
         c = -1;
     else if((s1->tv_sec) > (s2->tv_sec))
         c = 1;
-    else
-        c = 0;
-
+    else{
+        if((s1->tv_usec) < (s2->tv_usec))
+            c = -1;
+        else if((s1->tv_usec) > (s2->tv_usec))
+            c = 1;
+        else
+            c = 0;
+    }
     return c;
 }
 
@@ -92,68 +101,142 @@ long hash(void *value, long N) {
     return (long)(ans % N);
 }
 
-void oneShot(const ArrayList *al, Event *e){
+void oneShot(char **word, Event *e){
     struct timeval *tm = (struct timeval *) malloc (sizeof(struct timeval));
 
-    al->get(al, 0, (void **)&e->event);
-    al->get(al, 1, (void **)&e->client_id);
-    al->get(al, 2, (void **)&tm->tv_sec);
-    al->get(al, 3, (void **)&tm->tv_usec);
-    al->get(al, 4, (void **)&e->host);
-    al->get(al, 5, (void **)&e->service);
-    al->get(al, 6, (void **)&e->port);
+    e->event = 1;
+    sscanf(word[1], "%lu", &(e->client_id));
+    sscanf(word[2], "%ld", &(tm->tv_sec));
+    sscanf(word[3], "%ld", &(tm->tv_usec));
+    e->host = strdup(word[4]);
+    e->service = strdup(word[5]);
+    sscanf(word[6], "%u", &(e->port));
 
     e->intervals = 0;
     e->local_id = localID++;
     e->cancel = 0;
-    
+
+    pq->insert(pq, (void *)tm, (void *)e);
+    m->putUnique(m, (void *)&localID, (void *)e);
 }
-void repeat(const ArrayList *al, Event *e){
-    struct timeval *tm = (struct timeval *) malloc (sizeof(struct timeval));
-    long msecs;
-    long usecs;
+
+void repeat(char **word, Event *e){    
     long secs = 0;
 
-    al->get(al, 2, (void **)&msecs);
-    usecs = msecs * 1000;
-    tm->tv_usec = usecs;
-    while (usecs > 1000000){
-        usecs -= 1000000;
-        secs += 1;
-    }
-    tm->tv_sec = secs;
 
+    struct timeval *tm = (struct timeval *) malloc (sizeof(struct timeval));
+    gettimeofday(tm, NULL);
 
-    al->get(al, 0, (void **)&e->event);
-    al->get(al, 1, (void **)&e->client_id);
-    al->get(al, 2, (void **)&e->intervals);
-    al->get(al, 3, (void **)&e->repeats);
-    al->get(al, 4, (void **)&e->host);
-    al->get(al, 5, (void **)&e->service);
-    al->get(al, 6, (void **)&e->port);
+    e->event = 2;
+    sscanf(word[1], "%lu", &(e->client_id));
+    sscanf(word[2], "%d", &(e->intervals));
+    sscanf(word[3], "%d", &(e->repeats));
+    e->host = strdup(word[4]);
+    e->service = strdup(word[5]);
+    sscanf(word[6], "%u", &(e->port));
 
     e->local_id = localID++;
     e->cancel = 0;
 
+    tm->tv_usec = e->intervals * 1000;
+    while (tm->tv_usec > 1000000){
+        tm->tv_usec -= 1000000;
+        tm->tv_sec += 1;
+    }
+    tm->tv_sec = secs;
+
     pq->insert(pq, tm, (void *)e);
-    m->putUnique(m, (void *)&localID, (void *)e);
+    m->putUnique(m, (void *)&e->local_id, (void *)e);
 }
 
-void cancel(const ArrayList *al){
+void cancel(char **word){
     Event *e;
     unsigned long svid;
-    al->get(al, 1, (void **)&svid);
+
+    sscanf(word[1], "%lu", &(svid));
     m->get(m, (void *)svid, (void **)&e);
     e->cancel = 1;
 }
 
 void *timer(UNUSED void *args){
-    return EXIT_SUCCESS;
+    struct timeval now;
+    struct timeval *time;
+    struct timeval *new_time = (struct timeval *) malloc (sizeof(struct timeval));
+    
+    Event *e;
+
+    for (;;){
+        const Queue *ready_queue = Queue_create(NULL);
+        const Queue *repeat_queue = Queue_create(NULL);
+
+        usleep(USECS);
+        gettimeofday(&now, NULL);
+
+        pthread_mutex_lock(&mutex);
+        while(pq->min(pq, (void **)&time, (void **)&e)){
+            if (cmp((void *)time, (void *)&now) <= 0){
+                pq->removeMin(pq, (void **)&time, (void **)&e);
+                ready_queue->enqueue(ready_queue, e);
+            } else{
+                break;
+            }
+        }
+        pthread_mutex_unlock(&mutex);
+
+
+        pthread_mutex_lock(&mutex);
+        while(ready_queue->dequeue(ready_queue, (void **)&e)){
+            printf("LENGTH: %ld\n", ready_queue->size(ready_queue));
+            if((e->event == 2) && e->repeats > 0){
+                printf("Event fired: %lu|%s|%s|%u\n", e->client_id, e->host, e->service, e->port);
+                if (e->repeats > 0){ // if there are still repeats, move to repeat queue
+                    repeat_queue->enqueue(repeat_queue, (void *)e);
+                }else{ // no repeats left
+                    m->remove(m, (void *)&e);
+                    free(e);
+                }
+                e->repeats -= 1;
+            }
+            else if (e->cancel == 0){ // check if event is canceled, fire if not
+                printf("Event fired: %lu|%s|%s|%u\n", e->client_id, e->host, e->service, e->port);
+            }
+            else{ // event is canceled
+                m->remove(m, (void *)&e);
+                free(e);
+            }
+        }
+        pthread_mutex_unlock(&mutex);
+        
+
+        pthread_mutex_lock(&mutex);
+        while(repeat_queue->dequeue(repeat_queue, (void **)&e)){
+            gettimeofday(new_time, NULL);
+            pq->insert(pq,(void *)new_time, (void *)&e);
+            free(new_time);
+        }
+        pthread_mutex_unlock(&mutex);
+
+        ready_queue->destroy(ready_queue);
+        repeat_queue->destroy(repeat_queue);
+    }
+}
+
+int extractWords(char *query, char **word){
+    int size = 0;
+    char *tmp = strtok(query, "|");
+    while(tmp != NULL){
+        word[size] = tmp;
+        tmp = strtok(NULL, "|");
+        size++;
+    }
+    word[size] = NULL;
+    return size;
 }
 
 void *svcFxn(UNUSED void *args) {
     char *query = (char *)malloc(BUFSIZ);
     char *response = (char *)malloc(BUFSIZ);
+    char *word[100];
     Event *e = (Event *)malloc(sizeof(Event));
     BXPEndpoint ep;
     unsigned qlen, rlen; 
@@ -171,38 +254,27 @@ void *svcFxn(UNUSED void *args) {
     } 
 
     while ((qlen = bxp_query(bxps, &ep, query, 10000)) > 0) { 
-
+        int len = extractWords(query, word);
         // fill ArrayList
-        char *tmp = strtok(query, "|");
-        while(tmp != NULL){
-            printf("%s\n", tmp);
-            al->add(al, tmp);
-            tmp = strtok(NULL, "|");
-        }
-        int len = al->size(al);
-        char *word;
-        al->get(al, 0, (void **)&word);
-        
-        if ((strcmp(word, "OneShot") == 0) && len == 7){ //secs as priority
+                
+        if ((strcmp(word[0], "OneShot") == 0) && len == 7){ //secs as priority
             sprintf(response, "1%s", query);
-            oneShot(al, e);
-        }else if ((strcmp(word, "Repeat") == 0) && len == 7){
+            oneShot(word, e);
+        }else if ((strcmp(word[0], "Repeat") == 0) && len == 7){
             sprintf(response, "1%s", query);
-            repeat(al, e);
-        }else if((strcmp(word, "Cancel") == 0) && len == 2){
+            repeat(word, e);
+        }else if((strcmp(word[0], "Cancel") == 0) && len == 2){
             sprintf(response, "1%s", query);
-            cancel(al);
+            cancel(word);
         }else{
             sprintf(response, "0\n");
         }
-        al->clear(al);
 
         rlen = strlen(response) + 1;
         bxp_response(bxps, &ep, response, rlen); 
     } 
     free(query);
     free(response);
-    al->destroy(al);
     return EXIT_SUCCESS;
 }
  
@@ -217,10 +289,6 @@ int main(UNUSED int argc, UNUSED char *argv[]) {
     }
     if ((m = HashMap(1024L, 2.0, hash, hash_cmp, free, free)) == NULL) {
         fprintf(stderr, "Unable to create Map to hold (key, value) pairs\n");
-        exit(EXIT_FAILURE);
-    }
-    if ((al = ArrayList_create(0L, doNothing)) == NULL){
-        fprintf(stderr, "Unable to create ArrayList\n");
         exit(EXIT_FAILURE);
     }
     // Create a thread that will receive requests from client applications
