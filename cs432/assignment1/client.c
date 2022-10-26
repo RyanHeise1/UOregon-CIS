@@ -67,8 +67,42 @@ struct text_error *text_error;
 
 // globals
 char *active_channel; // holds the active channel you are talking o
+char *listening_channels[BUFSIZ] = {};
+int num_channel = 0; // number of listening channels
 char fromServer[BUFSIZ]; // message from server 
 int socketFd; // fd for socket
+
+int find_index(char *arg){
+    // find index of arg in listening_channels
+    int index = -1;
+    int arrLen = sizeof(listening_channels) / sizeof(listening_channels[0]);
+    // search for index of key
+    for (int i = 0; i < arrLen; i++){
+        if ((strcmp(listening_channels[i], arg)) == 0){
+            index = i;
+            break;
+        }
+    }
+    return index;
+}
+
+void remove_str(char **arr, char *key){
+    // remove key from arr
+    int arrLen = sizeof(arr) / sizeof(arr[0]);
+    int index = -1;
+
+    // search for index of key
+    for (int i = 0; i < arrLen; i++){
+        if ((strcmp(arr[i], key)) == 0){
+            index = i;
+            break;
+        }
+    }
+    // update array
+    for(int j = index-1; j < arrLen-1; j++){
+        arr[j] = arr[j+1];
+    }
+}
 
 int process_message(){
     char message[SAY_MAX];
@@ -88,80 +122,89 @@ int process_message(){
     if (message[0] == '/'){
         char split[2] = " ";
         char *token;
-        char *arg; // arguments for join, leave, who, switch
+        char arg[BUFSIZ]; // arguments for join, leave, who, switch
 
         token = strtok(message, split); // firs token is the /command
-        while (token != NULL){
-            if ((strcmp(token, "/exit")) == 0){
-                if ((strtok(NULL, split)) != NULL){
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else{
-                    send(socketFd, (void *) &request_logout, sizeof(request_logout), 0);
-                    close(socketFd);
-                    return EXIT_SUCCESS;
-                }
+        if ((strcmp(token, "/exit")) == 0){
+            if ((strtok(NULL, split)) != NULL){
+                fprintf(stderr, "invalid command\n");
+                exit(EXIT_FAILURE);
+            }else{
+                send(socketFd, (void *) &request_logout, sizeof(request_logout), 0);
+                close(socketFd);
+                return EXIT_SUCCESS;
             }
-            if ((strcmp(token, "/list")) == 0){
-                if ((strtok(NULL, split)) != NULL){
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else{
-                    send(socketFd, (void *) &request_list, sizeof(request_list), 0);
-                }
+        }
+        else if ((strcmp(token, "/list")) == 0){
+            if ((strtok(NULL, split)) != NULL){
+                fprintf(stderr, "invalid command\n");
+                exit(EXIT_FAILURE);
+            }else{
+                send(socketFd, (void *) &request_list, sizeof(request_list), 0);
             }
-            if ((strcmp(token, "/join")) == 0){
-                if ((token = strtok(NULL, split)) == NULL){ // if there is no argument, throw error
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }
-                else if ((arg = strtok(NULL, split)) != NULL){ // 2 arguments were given, throw error and exit
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else{ 
-                    strcpy(request_join.req_channel, token);
-                    send(socketFd, (void *) &request_join, sizeof(request_join), 0);
-                    // might have to keep track of subscribed channels here
-                    active_channel = token;
-                }
+        }
+        else if ((strcmp(token, "/join")) == 0){
+            if ((token = strtok(NULL, split)) == NULL){ // if there is no argument, throw error
+                fprintf(stderr, "invalid command\n");
+                exit(EXIT_FAILURE);
             }
-            if ((strcmp(token, "/leave")) == 0){
-                if ((token = strtok(NULL, split)) == NULL){
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else if ((arg = strtok(NULL, split)) != NULL){ // 2 arguments were given, throw error and exit
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else{
-                    strcpy(request_leave.req_channel, token);
-                    send(socketFd, (void *) &request_leave, sizeof(request_leave), 0);
-                    printf("TODO");
-                }
+            while(token != NULL){
+                strcat(arg, token);
+                strcat(arg, " ");
+                token = strtok(NULL, split);
             }
-            if ((strcmp(token, "/who")) == 0){
-                if ((token = strtok(NULL, split)) == NULL){
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else if ((arg = strtok(NULL, split)) != NULL){ // 2 arguments were given, throw error and exit
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else{
-                    strcpy(request_who.req_channel, token);
-                    send(socketFd, (void *) &request_who, sizeof(request_who), 0);
-                    printf("TODO");
-                }
+            strcpy(request_join.req_channel, arg);
+            send(socketFd, (void *) &request_join, sizeof(request_join), 0);
+            listening_channels[num_channel++] = token;
+            active_channel = token;
+        }
+        else if ((strcmp(token, "/leave")) == 0){
+            if ((token = strtok(NULL, split)) == NULL){
+                fprintf(stderr, "invalid command\n");
+                exit(EXIT_FAILURE);
             }
-            if ((strcmp(token, "/switch")) == 0){
-                if ((token = strtok(NULL, split)) == NULL){
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else if ((arg = strtok(NULL, split)) != NULL){ // 2 arguments were given, throw error and exit
-                    fprintf(stderr, "invalid command\n");
-                    exit(EXIT_FAILURE);
-                }else{
-                    printf("TODO");
-                }
+            while(token != NULL){
+                strcat(arg, token);
+                strcat(arg, " ");
+                token = strtok(NULL, split);
             }
+            strcpy(request_leave.req_channel, arg);
+            send(socketFd, (void *) &request_leave, sizeof(request_leave), 0);
+            remove_str(listening_channels, arg); // remove active channel from array
+            num_channel--;
+        }
+        else if ((strcmp(token, "/who")) == 0){
+            if ((token = strtok(NULL, split)) == NULL){
+                fprintf(stderr, "invalid command\n");
+                exit(EXIT_FAILURE);
+            }
+            while(token != NULL){
+                strcat(arg, token);
+                strcat(arg, " ");
+                token = strtok(NULL, split);
+            }
+            strcpy(request_who.req_channel, arg);
+            send(socketFd, (void *) &request_who, sizeof(request_who), 0);
+        }
+        else if ((strcmp(token, "/switch")) == 0){
+            if ((token = strtok(NULL, split)) == NULL){
+                fprintf(stderr, "invalid command\n");
+                exit(EXIT_FAILURE);
+            }
+            while(token != NULL){
+                strcat(arg, token);
+                strcat(arg, " ");
+                token = strtok(NULL, split);
+            }
+            int index = find_index(arg);
+            if (index != -1){
+                active_channel = arg;
+            }else{
+                fprintf(stderr, "You are not subscribed to %s\n", arg);
+            }
+        }
+        else{
+            fprintf(stderr, "Unknown command\n");
         }
     }
     else{
@@ -203,6 +246,7 @@ int main(int argc, char *argv[]) {
 
     // When user first joins, their active channel is "Common"
     active_channel = "Common";
+    listening_channels[num_channel++] = active_channel;
 
     // info to send to server
     request_login.req_type = REQ_LOGIN;
