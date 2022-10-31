@@ -49,11 +49,15 @@ struct text_list *text_list;
 struct text_who *text_who;
 struct text_error *text_error; 
 
-struct user {
+/*struct user {
     char *username;
     char *ip;
-    char *channels[CHANNEL_MAX];
 } User;
+
+struct channel {
+    char *channels[CHANNEL_MAX];
+    struct User;
+}ActiveChannels;*/
 
 // resource: https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/
 //           https://www.ibm.com/docs/en/ztpf/1.1.0.14?topic=zf-gethostbyname-get-ip-address-information-by-host-name
@@ -107,7 +111,7 @@ int main(int argc, char* argv[]){
     }
     memset(&server, 0, sizeof(server));
     server.sin_family = AF_INET;
-    server.sin_port = htonl(port); //translate between host byte order and network byte
+    server.sin_port = htons(port); //translate between host byte order and network byte
     
     printf("Bind");
     // resource: https://www.ibm.com/docs/en/zos/2.3.0?topic=functions-bind-bind-name-socket
@@ -124,30 +128,37 @@ int main(int argc, char* argv[]){
                 case REQ_LOGIN:
                     request_login = (struct request_login *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("login");
                     break;
                 case REQ_LOGOUT:
                     request_logout = (struct request_logout *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("logout");
                     break;
                 case REQ_JOIN:
                     request_join = (struct request_join *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("join");
                     break;
                 case REQ_LEAVE:
                     request_leave = (struct request_leave *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("leave");
                     break;
                 case REQ_SAY:
                     request_say = (struct request_say *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("say");
                     break;
                 case REQ_LIST:
                     request_list = (struct request_list *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("list");
                     break;
                 case REQ_WHO:
                     request_who = (struct request_who *) &tmp;
                     //client_port = ntohl(fromSrc.sin_port);
+                    printf("who");
                     break;
                 default:
                     fprintf(stderr, "Error parsing packet type (unknown)\n");
