@@ -67,9 +67,9 @@ struct text_error *text_error;
 
 // globals
 char *active_channel; // holds the active channel you are talking o
-char *listening_channels[BUFSIZ] = {};
-int num_channel = 0; // number of listening channels
 char fromServer[BUFSIZ]; // message from server 
+char *listening_channels[CHANNEL_MAX] = {};
+int num_channel = 0;
 int socketFd; // fd for socket
 
 int find_index(char *arg){
@@ -104,7 +104,7 @@ void remove_str(char **arr, char *key){
     }
 }
 
-int process_message(){
+void process_message(){
     char message[SAY_MAX];
     char letter;
     int i = 0;
@@ -128,11 +128,9 @@ int process_message(){
         if ((strcmp(token, "/exit")) == 0){
             if ((strtok(NULL, split)) != NULL){
                 fprintf(stderr, "invalid command\n");
-                exit(EXIT_FAILURE);
             }else{
                 send(socketFd, (void *) &request_logout, sizeof(request_logout), 0);
                 close(socketFd);
-                return EXIT_SUCCESS;
             }
         }
         else if ((strcmp(token, "/list")) == 0){
@@ -146,61 +144,61 @@ int process_message(){
         else if ((strcmp(token, "/join")) == 0){
             if ((token = strtok(NULL, split)) == NULL){ // if there is no argument, throw error
                 fprintf(stderr, "invalid command\n");
-                exit(EXIT_FAILURE);
+            }else{
+                while(token != NULL){
+                    strcat(arg, token);
+                    strcat(arg, " ");
+                    token = strtok(NULL, split);
+                }
+                strcpy(request_join.req_channel, arg);
+                send(socketFd, (void *) &request_join, sizeof(request_join), 0);
+                listening_channels[num_channel++] = arg;
+                active_channel = arg;
             }
-            while(token != NULL){
-                strcat(arg, token);
-                strcat(arg, " ");
-                token = strtok(NULL, split);
-            }
-            strcpy(request_join.req_channel, arg);
-            send(socketFd, (void *) &request_join, sizeof(request_join), 0);
-            listening_channels[num_channel++] = token;
-            active_channel = token;
         }
         else if ((strcmp(token, "/leave")) == 0){
             if ((token = strtok(NULL, split)) == NULL){
                 fprintf(stderr, "invalid command\n");
-                exit(EXIT_FAILURE);
+            }else{
+                while(token != NULL){
+                    strcat(arg, token);
+                    strcat(arg, " ");
+                    token = strtok(NULL, split);
+                }
+                strcpy(request_leave.req_channel, arg);
+                send(socketFd, (void *) &request_leave, sizeof(request_leave), 0);
+                remove_str(listening_channels, arg); // remove active channel from array
+                num_channel--;
             }
-            while(token != NULL){
-                strcat(arg, token);
-                strcat(arg, " ");
-                token = strtok(NULL, split);
-            }
-            strcpy(request_leave.req_channel, arg);
-            send(socketFd, (void *) &request_leave, sizeof(request_leave), 0);
-            remove_str(listening_channels, arg); // remove active channel from array
-            num_channel--;
         }
         else if ((strcmp(token, "/who")) == 0){
             if ((token = strtok(NULL, split)) == NULL){
                 fprintf(stderr, "invalid command\n");
-                exit(EXIT_FAILURE);
+            }else{
+                while(token != NULL){
+                    strcat(arg, token);
+                    strcat(arg, " ");
+                    token = strtok(NULL, split);
+                }
+                strcpy(request_who.req_channel, arg);
+                send(socketFd, (void *) &request_who, sizeof(request_who), 0);
             }
-            while(token != NULL){
-                strcat(arg, token);
-                strcat(arg, " ");
-                token = strtok(NULL, split);
-            }
-            strcpy(request_who.req_channel, arg);
-            send(socketFd, (void *) &request_who, sizeof(request_who), 0);
         }
         else if ((strcmp(token, "/switch")) == 0){
             if ((token = strtok(NULL, split)) == NULL){
                 fprintf(stderr, "invalid command\n");
-                exit(EXIT_FAILURE);
-            }
-            while(token != NULL){
-                strcat(arg, token);
-                strcat(arg, " ");
-                token = strtok(NULL, split);
-            }
-            int index = find_index(arg);
-            if (index != -1){
-                active_channel = arg;
             }else{
-                fprintf(stderr, "You are not subscribed to %s\n", arg);
+                while(token != NULL){
+                    strcat(arg, token);
+                    strcat(arg, " ");
+                    token = strtok(NULL, split);
+                }
+                int index = find_index(arg);
+                if (index != -1){
+                    active_channel = arg;
+                }else{
+                    fprintf(stderr, "You are not subscribed to %s\n", arg);
+                }
             }
         }
         else{
@@ -214,11 +212,8 @@ int process_message(){
         int to = send(socketFd, (void *) &request_say, sizeof(request_say), 0);
         if (to == -1){ // check is send failed
             fprintf(stderr, "Failed to send message to server");
-            exit(EXIT_FAILURE);
         }
-        return EXIT_SUCCESS;
     }
-    return EXIT_FAILURE;
 }
 
 // resource: https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/
@@ -239,6 +234,7 @@ int hostname_to_ip(char *hostname, char *ip){
 
 int main(int argc, char *argv[]) {
     char *hostname; // argv[1]
+    char *nptr;
     int port; // argv[2]
     char *username; // argv[3]
     char ip[BUFSIZ]; // IP address of hostname (obtained in hostname_to_ip())
@@ -266,7 +262,7 @@ int main(int argc, char *argv[]) {
     }
     // (unneccessary) set variables so I dont have to use argv[i] everytime
     hostname = argv[1];
-    port = atoi(argv[2]);
+    port = strtol(argv[2], &nptr, 10);
     username = strdup(argv[3]);
     // check that username is > the max length defined in duckchat.h (size = 32)
     if (strlen(username) > USERNAME_MAX){
@@ -282,7 +278,7 @@ int main(int argc, char *argv[]) {
     // create socket
     socketFd = socket(AF_INET, SOCK_STREAM, 0);
     if (socketFd == -1){
-        fprintf(stderr, "ERROR: Socket creation failed... exiting");
+        fprintf(stderr, "ERROR: client socket creation failed... exiting");
         exit(EXIT_FAILURE);
     }
     // https://www.gta.ufrj.br/ensino/eel878/sockets/sockaddr_inman.html
