@@ -35,19 +35,19 @@
 #include "duckchat.h"
 #include "raw.h"
 
-struct request *request;
-struct request_login *request_login;
-struct request_logout *request_logout;
-struct request_join *request_join;
-struct request_leave *request_leave;
-struct request_say *request_say;
-struct request_list *request_list;
-struct request_who *request_who;
-struct text_say text_say;
-struct channel_info *channel_info;
-struct text_list *text_list;
-struct text_who *text_who;
-struct text_error *text_error; 
+struct request *req;
+struct request_login *req_login;
+struct request_logout *req_logout;
+struct request_join *req_join;
+struct request_leave *req_leave;
+struct request_say *req_say;
+struct request_list *req_list;
+struct request_who *req_who;
+struct text_say txt_say;
+struct channel_info *chn_info;
+struct text_list *txt_list;
+struct text_who txt_who;
+struct text_error txt_error; 
 
 /*struct user {
     char *username;
@@ -62,6 +62,7 @@ struct channel {
 // resource: https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/
 //           https://www.ibm.com/docs/en/ztpf/1.1.0.14?topic=zf-gethostbyname-get-ip-address-information-by-host-name
 int hostname_to_ip(char *hostname, char *ip){
+    fprintf(stdout, "Hostname to ip\n");
     struct hostent *hp; // struct returned by gethostbyname()
     struct in_addr **addr_list; 
 
@@ -76,88 +77,95 @@ int hostname_to_ip(char *hostname, char *ip){
 }
 
 int main(int argc, char* argv[]){
+    fprintf(stdout, "Test\n");
     char *nptr; // Used to Convert value to a decimal long
-    char *tmp; // temp value that is used in recieve (function takes a char *)
     int port; // argv[2]
+    char ip[BUFSIZ]; // IP address of hostname (obtained in hostname_to_ip())
     //int client_port;
-    int server_socket;
-    struct sockaddr_in server;
-    struct sockaddr_in fromSrc;
-    
-    socklen_t fromSrcLen = sizeof(fromSrc);
-    
-    text_say.txt_type = TXT_SAY;
-    text_who->txt_type = TXT_WHO;
-    text_error->txt_type = TXT_ERROR;
-    
+    int socketFd;
+    struct sockaddr_in serverAddr, clientAddr;
+
+    txt_say.txt_type = TXT_SAY;
+    txt_who.txt_type = TXT_WHO;
+    txt_error.txt_type = TXT_ERROR;
+        
+    fprintf(stdout, "Check arguments\n");
     if (argc != 3){
         fprintf(stderr, "Usage: ./server host_address port_number\n");
         exit(EXIT_FAILURE);
     }
-    
     /* Convert the provided value to a decimal long */
+    fprintf(stdout, "Check port len\n");
     port = strtol(argv[2], &nptr, 10);
     // valid port numbers in range 1-65535
     // https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
     if (port <= 0 || port > 65535){
-        fprintf(stderr, "Invalid port. Enter number > 0");
+        fprintf(stderr, "Invalid port. Enter number > 0\n");
         exit(EXIT_FAILURE);
     }
-    printf("Create socket");
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_socket == -1){
-        fprintf(stderr, "ERROR: server socket creation failed... exiting");
+    hostname_to_ip(argv[1], ip);
+    printf("%s resolved to %s\n" , argv[1] , ip);
+
+    fprintf(stdout, "Create socket\n");
+    socketFd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (socketFd == -1){
+        fprintf(stderr, "ERROR: server socket creation failed... exiting\n");
         exit(EXIT_FAILURE);
     }
-    memset(&server, 0, sizeof(server));
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port); //translate between host byte order and network byte
-    
-    printf("Bind");
+    memset(&serverAddr, 0, sizeof(serverAddr));
+    memset(&clientAddr, 0, sizeof(clientAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(port); //translate between host byte order and network byte
+    serverAddr.sin_addr.s_addr = inet_addr(ip);
+
+    printf("Bind\n");
     // resource: https://www.ibm.com/docs/en/zos/2.3.0?topic=functions-bind-bind-name-socket
-    int bindClient = bind(server_socket, (struct sockaddr *) &server, sizeof(server));
+    int bindClient = bind(socketFd, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
     if (bindClient == -1){
-        fprintf(stderr, "ERROR: unable to bind... exiting");
+        fprintf(stderr, "ERROR: unable to bind... exiting\n");
         exit(EXIT_FAILURE);
     }
+    
+    socklen_t fromClientLen = sizeof(clientAddr);
+    char *tmp; // temp value that is used in recieve (function takes a char *)
     while (true){
-        recvfrom(server_socket, (void *) &tmp, sizeof(tmp), 0, (struct sockaddr *) &fromSrc, &fromSrcLen);
-        request = (struct request *) &tmp; // cast value of tmp to the request str
-        if (fromSrc.sin_family == AF_INET){
-            switch(request->req_type){
+        recvfrom(socketFd, (void *) &tmp, sizeof(tmp), MSG_WAITALL, (struct sockaddr *) &clientAddr, &fromClientLen);
+        req = (struct request *) &tmp; // cast value of tmp to the request str
+        if (clientAddr.sin_family == AF_INET){
+            switch(req->req_type){
                 case REQ_LOGIN:
-                    request_login = (struct request_login *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_login = (struct request_login *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("login");
                     break;
                 case REQ_LOGOUT:
-                    request_logout = (struct request_logout *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_logout = (struct request_logout *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("logout");
                     break;
                 case REQ_JOIN:
-                    request_join = (struct request_join *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_join = (struct request_join *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("join");
                     break;
                 case REQ_LEAVE:
-                    request_leave = (struct request_leave *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_leave = (struct request_leave *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("leave");
                     break;
                 case REQ_SAY:
-                    request_say = (struct request_say *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_say = (struct request_say *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("say");
                     break;
                 case REQ_LIST:
-                    request_list = (struct request_list *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_list = (struct request_list *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("list");
                     break;
                 case REQ_WHO:
-                    request_who = (struct request_who *) &tmp;
-                    //client_port = ntohl(fromSrc.sin_port);
+                    req_who = (struct request_who *) &tmp;
+                    //client_port = ntohl(fromClient.sin_port);
                     printf("who");
                     break;
                 default:
