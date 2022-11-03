@@ -47,6 +47,7 @@ RESOURCES:
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <netdb.h>
 #include "duckchat.h"
 #include "raw.h"
@@ -111,21 +112,21 @@ void remove_str(char **arr, char *key){
 }
 
 void process_message(){
-    fprintf(stdout, "Process message\n");
-    char message[SAY_MAX];
     char letter;
     int i = 0;
 
     // Takes in user input letter by letter
     // stops at SAY_MAX
-    raw_mode();
     printf("\n>");
+    raw_mode();
+    char message[SAY_MAX];
     while((letter = getchar()) != '\n'){
         printf("%c", letter);
         message[i++] = letter;
     }
     cooked_mode();
     message[i] = '\0';
+    printf("\n");
 
     if (message[0] == '/'){
         char split[2] = " ";
@@ -138,7 +139,7 @@ void process_message(){
             if ((strtok(NULL, split)) != NULL){
                 fprintf(stderr, "invalid command\n");
             }else{
-                sendto(socketFd, (void *) &req_logout, sizeof(req_logout), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+                sendto(socketFd, (void *) &req_logout, sizeof(req_logout), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
                 close(socketFd);
             }
         }
@@ -148,7 +149,7 @@ void process_message(){
                 fprintf(stderr, "invalid command\n");
                 exit(EXIT_FAILURE);
             }else{
-                sendto(socketFd, (void *) &req_list, sizeof(req_list), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+                sendto(socketFd, (void *) &req_list, sizeof(req_list), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
             }
         }
         else if ((strcmp(token, "/join")) == 0){
@@ -162,7 +163,7 @@ void process_message(){
                     token = strtok(NULL, split);
                 }
                 strcpy(req_join.req_channel, arg);
-                sendto(socketFd, (void *) &req_join, sizeof(req_join), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+                sendto(socketFd, (void *) &req_join, sizeof(req_join), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
                 listening_channels[num_channel++] = arg;
                 active_channel = arg;
             }
@@ -178,7 +179,7 @@ void process_message(){
                     token = strtok(NULL, split);
                 }
                 strcpy(req_leave.req_channel, arg);
-                sendto(socketFd, (void *) &req_leave, sizeof(req_leave), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+                sendto(socketFd, (void *) &req_leave, sizeof(req_leave), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
                 remove_str(listening_channels, arg);
                 num_channel--;
             }
@@ -193,7 +194,7 @@ void process_message(){
                     token = strtok(NULL, split);
                 }
                 strcpy(req_who.req_channel, arg);
-                sendto(socketFd, (void *) &req_who, sizeof(req_who), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+                sendto(socketFd, (void *) &req_who, sizeof(req_who), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
             }
         }
         else if ((strcmp(token, "/switch")) == 0){
@@ -222,7 +223,8 @@ void process_message(){
         // Set up the request_say struct and send message to server
         strcpy(req_say.req_channel, active_channel);
         strcpy(req_say.req_text, message);
-        int to = sendto(socketFd, (void *) &req_say, sizeof(req_say), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+        printf("Sending message to server\n");
+        int to = sendto(socketFd, (void *) &req_say, sizeof(req_say), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
         if (to == -1){ // check is send failed
             fprintf(stderr, "Failed to send message to server");
         }
@@ -232,7 +234,6 @@ void process_message(){
 // resource: https://www.binarytides.com/hostname-to-ip-address-c-sockets-linux/
 //           https://www.ibm.com/docs/en/ztpf/1.1.0.14?topic=zf-gethostbyname-get-ip-address-information-by-host-name
 int hostname_to_ip(char *hostname, char *ip){
-    fprintf(stdout, "Hostname to ip\n");
     struct hostent *hp; // struct returned by gethostbyname()
     struct in_addr **addr_list; 
 
@@ -247,7 +248,6 @@ int hostname_to_ip(char *hostname, char *ip){
 }
 
 int main(int argc, char *argv[]) {
-    fprintf(stdout, "start\n");
     char *hostname; // argv[1]
     char *nptr;
     char *tmp;
@@ -271,8 +271,7 @@ int main(int argc, char *argv[]) {
     req_who.req_type = REQ_WHO;
 
     // check number of arguments... Exit if < 3
-    fprintf(stdout, "Check Args\n");
-    if (argc < 3){                    
+    if (argc <= 3){                    
         fprintf(stderr, "Usage: ./client server_socket server_port username\n");
         exit(EXIT_FAILURE);
     }
@@ -281,7 +280,6 @@ int main(int argc, char *argv[]) {
     port = strtol(argv[2], &nptr, 10);
     username = strdup(argv[3]);
     strcpy(req_login.req_username, username);
-    fprintf(stdout, "Check username len\n");
     // check that username is > the max length defined in duckchat.h (size = 32)
     if (strlen(username) > USERNAME_MAX){
         fprintf(stderr, "ERROR: Username Lenght should be >= 32");
@@ -291,26 +289,22 @@ int main(int argc, char *argv[]) {
     // convert hostname to IPv4 address 
     // (if user enters in "localhost" as the hostname, it will resolve to IPv4)
     hostname_to_ip(hostname, ip);
-    printf("%s resolved to %s\n" , hostname , ip);
 
     // create socket
-    fprintf(stdout, "Create socket\n");
     socketFd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (socketFd == -1){
         fprintf(stderr, "ERROR: client socket creation failed... exiting");
         exit(EXIT_FAILURE);
     }
     // https://www.gta.ufrj.br/ensino/eel878/sockets/sockaddr_inman.html
-    fprintf(stdout, "memset\n");
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(port); //translate between host byte order and network byte
     serverAddr.sin_addr.s_addr = inet_addr(ip);
 
     // request login
-    fprintf(stdout, "request login\n");
     // TODO USE SEND TO
-    int login = sendto(socketFd, (void *) &req_login, sizeof(req_login), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+    int login = sendto(socketFd, (void *) &req_login, sizeof(req_login), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
     //int login = sendto(socketFd, &req_login, sizeof(req_login), 0);
     if (login == -1){
         fprintf(stderr, "Failed to send login request\n");
@@ -318,8 +312,7 @@ int main(int argc, char *argv[]) {
     }
     
     // If login is successful, we join with the username
-    fprintf(stdout, "Join\n");
-    int join = sendto(socketFd, (void *) &req_join, sizeof(req_join), MSG_CONFIRM, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
+    int join = sendto(socketFd, (void *) &req_join, sizeof(req_join), 0, (const struct sockaddr *) &serverAddr, sizeof(serverAddr));
     if (join == -1){
         fprintf(stderr, "Failed to send join request\n");
         exit(EXIT_FAILURE);
@@ -330,11 +323,13 @@ int main(int argc, char *argv[]) {
         process_message();
 
         // wait to recieve message back from server
-        int from = recvfrom(socketFd, (void *) &tmp, sizeof(tmp), MSG_WAITALL, (struct sockaddr *) &serverAddr, &len);
+        int from = recvfrom(socketFd, (void *) &tmp, sizeof(tmp), 0, (struct sockaddr *) &serverAddr, &len);
+        printf("Ayeee got a message\n");
         //int from = recvfrom(socketFd, &fromServer, sizeof(fromServer), 0);
         if (from == -1){ // if not able to recieve message
             fprintf(stderr, "Not able to recieve message from server\n");
         }else{
+            
             msg = (struct text *) &fromServer;
             switch(msg->txt_type){
                 case TXT_SAY: // print output
