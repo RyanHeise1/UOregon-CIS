@@ -1,4 +1,4 @@
-#include <sys/types.h>
+#include <sys/types.h> 
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
@@ -36,6 +36,8 @@ map<string,int> active_usernames; //0-inactive , 1-active
 //map<struct sockaddr_in,string> rev_usernames;
 map<string,string> rev_usernames; //<ip+port in string, username>
 map<string,channel_type> channels;
+map<string,struct sockaddr_in>server_mp;
+map<string,int>active_servers; //0-inactive , 1-active
 
 void handle_socket_input();
 void handle_login_message(void *data, struct sockaddr_in sock);
@@ -48,17 +50,26 @@ void handle_who_message(void *data, struct sockaddr_in sock);
 void handle_keep_alive_message(struct sockaddr_in sock);
 void send_error_message(struct sockaddr_in sock, string error_msg);
 
+/* Functions to handle Server -> Server message */
+void process_ss_join_message(void *data, struct sockaddr_in sock);
+void process_ss_leave_message(void *data, struct sockaddr_in sock);
+void process_ss_say_message(void *data, struct sockaddr_in sock);
+void send_ss_join(string id, string channel_name, struct sockaddr_in sock);
+
 // Globals
-int delay = 60; // guard against network failures, 1min delay
+int timer = 60; /* Timer for server to renue subscription */
+string server_ip_port;
 
 int main(int argc, char *argv[]){
 	
-	if (((argc + 1) % 2) != 0 || argc < 3){
-		printf("Usage: ./server domain_name port_num\n");
+	/* We know argc has to be > 3 from P1. In P2, the ammount of args should be an odd number of args */
+	if (((argc + 1) % 2) != 0 || argc < 3){ 
+		printf("Usage: ./server ix 5000 ix 5001\n");
 		exit(1);
 	}
 
 	char hostname[HOSTNAME_MAX];
+	string ip;
 	int port;
 	
 	strcpy(hostname, argv[1]);
@@ -77,10 +88,34 @@ int main(int argc, char *argv[]){
 	server.sin_port = htons(port);
 
 	if ((he = gethostbyname(hostname)) == NULL) {
-		puts("error resolving hostname..");
+		puts("error resolving hostname... exiting\n");
 		exit(1);
 	}
+
 	memcpy(&server.sin_addr, he->h_addr_list[0], he->h_length);
+	ip = inet_ntoa(server.sin_addr);
+	server_ip_port = ip + ":" + to_string(server.sin_port); /* Format IP:Port */
+
+	struct sockaddr_in tmp;
+	for (int i = 3; i < argc; i += 2){ /* We start at 3 since we are doing bind on the first 2 elem below */
+		
+		strcpy(hostname, argv[i]);
+		port = atoi(argv[i+1]);
+
+		if ((he = gethostbyname(hostname)) == NULL) {
+			puts("error resolving hostname... exiting\n");
+			exit(1);
+		}	
+		tmp.sin_family = AF_INET;
+		tmp.sin_port = htons(port);
+
+		memcpy(&tmp.sin_addr, he->h_addr_list[0], he->h_length);
+		ip = inet_ntoa(tmp.sin_addr);
+		server_ip_port = ip + ":" + to_string(tmp.sin_port);
+
+		server_mp[server_ip_port] = tmp; /* Add server to tree */
+		active_servers[server_ip_port] = 0; /* Set server to active */
+	}
 
 	int err;
 
@@ -90,7 +125,7 @@ int main(int argc, char *argv[]){
 		perror("bind failed\n");
 	}
 	else{
-		printf("bound socket\n");
+		//printf("bound socket\n");
 	}
 
 	//testing maps end
