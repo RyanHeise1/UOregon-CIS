@@ -3,7 +3,7 @@
 
 /* Path names to unix domain sockets should not be longer than this */
 #ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX 108
+#define UNIX_PATH_MAX 108 
 #endif
 
 /* This tells gcc to "pack" the structure.  Normally, gcc will
@@ -88,6 +88,11 @@ struct request_keep_alive {
         request_t req_type; /* = REQ_KEEP_ALIVE */
 } packed;
 
+
+
+
+
+
 struct request_ss_join {
         request_t req_type; /* = REQ_SS_JOIN */
         char req_channel[CHANNEL_MAX]; 
@@ -101,10 +106,15 @@ struct request_ss_leave{
 struct request_ss_say{
         request_t req_type; /* = REQ_SS_SAY */
         unsigned long long req_uid;
-        char req_channel[CHANNEL_MAX];
-        char req_username[USERNAME_MAX];
-        char req_text[SAY_MAX]; 
+        char txt_channel[CHANNEL_MAX];
+        char txt_username[USERNAME_MAX];
+        char txt_text[SAY_MAX]; 
 } packed;
+
+
+
+
+
 
 /* This structure is used for a generic text type, to the client. */
 struct text {

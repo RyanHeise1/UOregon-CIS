@@ -6,11 +6,11 @@ CFLAGS=-Wall -W -g -Werror
 
 all: client server
 
-client: client.cc raw.cc
-	$(CC) client.cc raw.cc $(LOADLIBES) $(CFLAGS) -o client
+client: client.cpp raw.cpp
+	$(CC) client.cpp raw.cpp $(LOADLIBES) $(CFLAGS) -o client
 
-server: server.cc 
-	$(CC) server.cc $(LOADLIBES) $(CFLAGS) -o server
+server: server.cpp
+	$(CC) server.cpp $(LOADLIBES) $(CFLAGS) -o server
 
 clean:
 	rm -f client server *.o
