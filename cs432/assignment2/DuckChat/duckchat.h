@@ -105,7 +105,7 @@ struct request_ss_leave{
 
 struct request_ss_say{
         request_t req_type; /* = REQ_SS_SAY */
-        unsigned long long req_uid;
+        unsigned long long req_id;
         char txt_channel[CHANNEL_MAX];
         char txt_username[USERNAME_MAX];
         char txt_text[SAY_MAX]; 
