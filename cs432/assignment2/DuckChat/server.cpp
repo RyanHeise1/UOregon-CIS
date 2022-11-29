@@ -43,6 +43,8 @@ Project specs:
 #include <ctype.h>
 #include <fcntl.h>
 #include <time.h>
+#include <signal.h>
+#include <pthread.h>
 #include <string>
 #include <map>
 #include <vector>
@@ -57,6 +59,7 @@ using namespace std;
 #define MAX_CONNECTIONS 10
 #define HOSTNAME_MAX 100
 #define MAX_MESSAGE_LEN 65536
+#define UNUSED __attribute__((unused)) 
 
 //typedef map<string,string> channel_type; //<username, ip+port in string>
 // Each server already keeps track of which users are in each channel. 
@@ -93,13 +96,15 @@ void send_error_message(struct sockaddr_in sock, string error_msg);
 void process_ss_join_message(void *data, struct sockaddr_in sock);
 void process_ss_leave_message(void *data, struct sockaddr_in sock);
 void process_ss_say_message(void *data, struct sockaddr_in sock);
+//void process_ss_who_message(void *data, struct sockaddr_in sock);
 void send_join(string id, string channel_name, struct sockaddr_in sock);
-void send_say(string channel, string username, string text, unsigned long long int id, struct sockaddr_in send_sock);
+void on_alarm(int signal);
 
 // Globals
-int timer = 60; /* Timer for server to renue subscription */
+int delay_in_seconds = 60; /* Timer for server to renue subscription */
 string server_ip_port;
 std::vector<unsigned long long int> users_id;
+struct sigaction act;
 
 int main(int argc, char *argv[]){
 	
@@ -176,12 +181,18 @@ int main(int argc, char *argv[]){
 		//printf("bound socket\n");
 	}
 
-	//testing maps end
-	//create default channel Common
-	//string default_channel = "Common";
-	//struct users;
-	//map<string,struct sockaddr_in> default_channel_users;
-	//users.channel_servers[default_channel] = default_channel_users
+	//set timer
+	// https://stackoverflow.com/questions/13923885/execute-a-method-every-x-seconds-in-c
+	// Setup on_alarm as a signal handler for the SIGALRM signal
+	
+	//memset(&act, 0, sizeof(act));
+	//act.sa_handler = &on_alarm;
+	//act.sa_mask = 0;
+	//act.sa_flags = SA_RESTART;  // Restart interrupted system calls
+	//sigaction(SIGALRM, &act, NULL);
+
+	//alarm(delay_in_seconds);  // Setup initial alarm
+
 
 	while(1) {
 		int rc;
@@ -205,6 +216,76 @@ int main(int argc, char *argv[]){
 	} 
 	return 0;
 }
+
+void on_alarm(UNUSED int signal){
+	/*printf("Send ss join to servers\n");
+	map<string, struct sockaddr_in>::iterator iter;
+	map<string, struct users>::iterator channel_iter;
+	for (iter = server_mp.begin(); iter != server_mp.end(); iter++){
+		for (channel_iter = channels.begin(); channel_iter != channels.end(); iter++){
+			// string id, string channel_name, struct sockaddr_in sock
+			string id = iter->first;
+			string channel_name = channel_iter->first;
+			struct sockaddr_in sock = iter->second;
+			//printf("send_join()\n");
+			cout << "Sending join to " << channel_name << "(id: " << id << ")" << endl;
+			send_join(id, channel_name, sock);
+		}
+	}*/
+	printf("1 min elapsed\n");
+	alarm(delay_in_seconds);
+}
+
+/*void *threadproc(UNUSED void *arg){
+	while (1){
+		sleep(timer);
+
+		
+
+		printf("Checking if active\n");
+		map<string, int>::iterator active_iter;
+		for (active_iter = active_servers.begin(); active_iter != active_servers.end();active_iter++){
+			//check if server is inactive
+			if (active_iter->second == 0){
+				for (channel_iter = channels.begin(); channel_iter != channels.end(); channel_iter++){
+					if (channel_iter->second.channel_servers.find(active_iter->first) != channel_iter->second.channel_servers.end()){
+						string key = active_iter->first;
+						string channel_name = channel_iter->first;
+
+						cout << server_ip_port << " " << key << " recieved S2S Leave from " << channel_name << endl;
+
+						//check whether key is in rev_usernames
+						map <string,struct users> :: iterator iter;
+						//map<string,struct users>::iterator channel_iter;
+						iter = channels.find(key);
+						if (iter == channels.end()) {
+							// ip.port not recognized
+							// send_error_message(sock, "Server ID was not found"); 
+							cout << "Server ID was not found" << endl;
+						}else{
+							// channel was found
+							// find server id
+							// same concept as in handle_logout_message()
+							map<string,struct sockaddr_in>::iterator within_channel_iterator;
+							// get user from map
+							struct users usr = iter->second;
+							// search for user
+							within_channel_iterator = usr.channel_type.find(key);
+							if (within_channel_iterator != iter->second.channel_type.end()){
+								iter->second.channel_type.erase(within_channel_iterator);
+							}else{
+								cout << "unable to find sockaddr of " << channel_name << endl;
+							}
+
+						}
+					}
+				}
+			}
+			active_iter->second = 0;
+		}
+
+	}
+}*/
 
 void handle_socket_input(){ 
 	struct sockaddr_in recv_client;
@@ -285,7 +366,7 @@ void handle_socket_input(){
 void process_ss_join_message(void *data, struct sockaddr_in sock){
 	//get message fields
 	struct request_ss_join* msg; //ERROR WAS HERE request_join instead of request_ss_join ;(
-	msg = (struct request_ss_join*)data;
+	msg = (struct request_ss_join *)data;
 
 	string channel = msg->req_channel;
 
@@ -294,15 +375,15 @@ void process_ss_join_message(void *data, struct sockaddr_in sock){
 
  	
 	string key = ip + "." + to_string(port);
-	cout << server_ip_port << " " << key << " recv S2S Join " << channel << endl;
 	active_servers[key] = 1;
-
+	cout << server_ip_port << " " << key << " recv S2S Join " << channel << endl;
 	// add sender server to list of servers for channel
 	map<string, struct users>::iterator channel_iter;
 
 	// check to see if channel is already in server
 	channel_iter = channels.find(channel);
 	if (channel_iter == channels.end()) {
+		printf("DEBUG: Not able to find channel %s\n", channel.c_str());
 		//ip+port not recognized - create new channel and broadcast to other servers
 		map<string, struct sockaddr_in> new_channel;
 		new_channel[key] = sock;
@@ -316,6 +397,7 @@ void process_ss_join_message(void *data, struct sockaddr_in sock){
 	}
 	else{
 		// found key in channels map
+		printf("DEBUG: found channel %s\n", channel.c_str());
 		channels[channel].channel_servers[key] = sock;
 	}
 }
@@ -333,8 +415,6 @@ void process_ss_leave_message(void *data, struct sockaddr_in sock){
  	char port_str[6];
  	sprintf(port_str, "%d", port);
 	string key = ip + "." +port_str;
-
-	cout << server_ip_port << " " << key << " recieved S2S Leave from " << channel << endl;
 
 	//check whether key is in rev_usernames
 	map <string,struct users> :: iterator iter;
@@ -357,8 +437,8 @@ void process_ss_leave_message(void *data, struct sockaddr_in sock){
 		}else{
 			cout << "unable to find sockaddr of " << channel << endl;
 		}
-
 	}
+	cout << server_ip_port << " " << key << " recieved S2S Leave from " << channel << endl;
 }
 
 void process_ss_say_message(void *data, struct sockaddr_in sock){
@@ -391,6 +471,7 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 		len = sizeof(send_leave);
 
 		// send leave msg
+		cout << server_ip_port << " " << key << " send S2S Leave " << channel << endl;
 		bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&sock, sizeof sock);
 
 		if (bytes < 0){
@@ -403,14 +484,17 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 		// id was not found
 		// user in channel
 		// loop through users in channel and send msg
+		users_id.push_back(id);
 		string channel = msg->txt_channel;
 		string username = msg->txt_username;
 		string text = msg->txt_text;
 
+		cout << server_ip_port << " "  << key << " recv S2S say " << username << " " << channel << " '" << text << "'" << endl;
+
 		map<string,struct sockaddr_in> existing_channel_users = channels[channel].channel_type;
 		map<string,struct sockaddr_in>::iterator channel_user_iter;
 		for(channel_user_iter = existing_channel_users.begin(); channel_user_iter != existing_channel_users.end(); channel_user_iter++){
-			//cout << "key: " << iter->first << " username: " << iter->second << endl;
+			//cout << "key: " << channel_user_iter->first << endl;
 
 			ssize_t bytes;
 			void *send_data;
@@ -449,13 +533,14 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 	    map<string,struct sockaddr_in> channel_serv = channels[channel].channel_servers;
 	    map<string,struct sockaddr_in>::iterator sock_iter;
 	    for (sock_iter = channel_serv.begin(); sock_iter != channel_serv.end(); sock_iter++){
+		    printf("DEBUG: %s\n", sock_iter->first.c_str());
 		    if (sock_iter->first != key){
 		    	ssize_t bytes;
 				void *send_data;
 				size_t len;
 
-				struct text_say send_msg;
-				send_msg.txt_type = TXT_SAY;
+				struct request_ss_say send_msg;
+				send_msg.req_type = REQ_SS_SAY;
 
 				const char* str = channel.c_str();
 				strcpy(send_msg.txt_channel, str);
@@ -471,8 +556,7 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 
 				//cout << username <<endl;
 				struct sockaddr_in send_sock = channel_user_iter->second;
-
-
+				cout << server_ip_port << " " << key << " send S2S say " << username << " " << channel << " '" << text << "'" << endl;
 				//bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, fromlen);
 				bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, sizeof send_sock);
 
@@ -481,11 +565,10 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 				}
 				else{
 					//printf("Message sent\n");
+					//cout << server_ip_port << " "  << key << " send S2S say " << username << channel <<  "'" << text << "'" << " in channel " << channel << endl;
 				}
 			}
 	    }
-		users_id.push_back(id);
-		cout << server_ip_port << " "  << key << " recieved S2S say " <<  "'" << text << "'" << " in channel " << channel << endl;
 	}
 }
 
@@ -515,7 +598,7 @@ void handle_login_message(void *data, struct sockaddr_in sock){
 	//cout << "key: " << key <<endl;
 	rev_usernames[key] = username;
 
-	cout << "server: " << username << " logs in" << endl;
+	cout << server_ip_port << " "  << key << " recv Request login " << username << endl;
 }
 
 void handle_logout_message(struct sockaddr_in sock){
@@ -641,9 +724,9 @@ void handle_join_message(void *data, struct sockaddr_in sock){
 			// loop through servers and send join message
 			for (sock_iter = server_mp.begin(); sock_iter != server_mp.end(); sock_iter++){
 				//printf("DEBUG: send_join()");
-				string server_info = sock_iter->first;
+				string server_name = sock_iter->first;
 				//struct sockaddr_in sock;
-				send_join(server_info, channel, sock_iter->second);
+				send_join(server_name, channel, sock_iter->second);
 			}
 		}
 		else{
@@ -655,7 +738,7 @@ void handle_join_message(void *data, struct sockaddr_in sock){
 			channels[channel].channel_type[username] = sock;
 			//cout << "joining exisitng channel" << endl;
 		}
-		cout << server_ip_port << " " << key << " recieved Join request for " << channel << endl;
+		cout << server_ip_port << " " << key << " recv Request join " << username << " " << channel << endl;
 		//cout << "server: " << username << " joins channel " << channel << endl;
 	}
 	//check whether the user is in usernames
@@ -677,13 +760,14 @@ void send_join(string id, string channel_name, struct sockaddr_in sock){
 
 	send_data = &req_join;
 	len = sizeof(req_join);
+	cout << server_ip_port << " " << id << " send S2S Join " << channel_name << endl;
 	bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&sock, sizeof sock);
 
 	//check to see that it was sent correctly
 	if (bytes < 0){ // send failed
 		cout << "Message to adj server failed" << endl;
 	}else{
-		cout << server_ip_port << " " << id << " sent S2S join msg to " << channel_name << endl;
+		// sent
 	}
 }
 
@@ -864,7 +948,7 @@ void handle_say_message(void *data, struct sockaddr_in sock){
 						//printf("Message sent\n");
 					}
 				}
-				cout << "server: " << username << " sends say message in " << channel << endl;
+				cout << server_ip_port << " " << key << " recv Request say " << username << " " << channel << " '" << text << "'" << endl;
 
 				// servers use their random number generator to create unique identifiers
 				// https://stackoverflow.com/questions/35726331/c-extracting-random-numbers-from-dev-urandom
@@ -912,7 +996,7 @@ void handle_say_message(void *data, struct sockaddr_in sock){
 					//cout << username <<endl;
 					
 
-
+					cout << server_ip_port << " " << key << " send S2S say " << username << " " << channel << " '" << text << "'" << endl;
 					//bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, fromlen);
 					bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, sizeof send_sock);
 
@@ -1108,6 +1192,7 @@ void handle_who_message(void *data, struct sockaddr_in sock){
 
 			for(channel_user_iter = existing_channel_users.begin(); channel_user_iter != existing_channel_users.end(); channel_user_iter++){
 				string username = channel_user_iter->first;
+				//printf("DEBUG: %s\n", username.c_str());
 
 				str = username.c_str();
 
@@ -1115,10 +1200,12 @@ void handle_who_message(void *data, struct sockaddr_in sock){
 
 
 				pos++;
-
-
-
 			}
+			//map<string,struct sockaddr_in> existing_channel_users = channels[channel].channel_type;
+			//map<string,struct sockaddr_in>::iterator channel_user_iter;
+			//for(channel_user_iter = existing_channel_users.begin(); channel_user_iter != existing_channel_users.end(); channel_user_iter++){
+			//	cout << "key: " << channel_user_iter->first << endl;
+			//}
 
 			send_data = send_msg;
 			len = sizeof(struct text_who) + (size * sizeof(struct user_info));
