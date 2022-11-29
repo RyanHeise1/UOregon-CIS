@@ -454,9 +454,17 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 
 	// https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
 	// check if id is in vector
+	int found = 0;
 	unsigned long long int id = msg->req_id;
+	unsigned long long int i;
+	for (i = 0; i < users_id.size(); i++){
+		cout << users_id[i] << endl;
+		if (users_id[i] == id){
+			found = 1;
+		}
+	}
 	//if (users_id.find(id) != users_id.end())
-	if (find(users_id.begin(), users_id.end(), id) != users_id.end()){
+	if (found){
 		// id was found
 		// discard the Say message and sends a Leave message to the sender
 		size_t len;
@@ -482,6 +490,7 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 			//printf("Message sent\n");
 		}
 	}else{
+		//printf("DEBUG: ID NOT FOUND\n");
 		// id was not found
 		// user in channel
 		// loop through users in channel and send msg
