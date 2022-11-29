@@ -383,7 +383,7 @@ void process_ss_join_message(void *data, struct sockaddr_in sock){
 	// check to see if channel is already in server
 	channel_iter = channels.find(channel);
 	if (channel_iter == channels.end()) {
-		printf("DEBUG: Not able to find channel %s\n", channel.c_str());
+		//printf("DEBUG: Not able to find channel %s\n", channel.c_str());
 		//ip+port not recognized - create new channel and broadcast to other servers
 		map<string, struct sockaddr_in> new_channel;
 		new_channel[key] = sock;
@@ -397,7 +397,7 @@ void process_ss_join_message(void *data, struct sockaddr_in sock){
 	}
 	else{
 		// found key in channels map
-		printf("DEBUG: found channel %s\n", channel.c_str());
+		//printf("DEBUG: found channel %s\n", channel.c_str());
 		channels[channel].channel_servers[key] = sock;
 	}
 }
@@ -450,12 +450,12 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 
  	char port_str[6];
  	sprintf(port_str, "%d", port);
-	string key = ip + "." +port_str;
+	string key = ip + "." + port_str;
 
 	// https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
 	// check if id is in vector
 	unsigned long long int id = msg->req_id;
-	if (std::find(users_id.begin(), users_id.end(), id) != users_id.end()){
+	if (find(users_id.begin(), users_id.end(), id) != users_id.end()){
 		// id was found
 		// discard the Say message and sends a Leave message to the sender
 		size_t len;
@@ -489,12 +489,12 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 		string username = msg->txt_username;
 		string text = msg->txt_text;
 
-		cout << server_ip_port << " "  << key << " recv S2S say " << username << " " << channel << " '" << text << "'" << endl;
+		cout << server_ip_port << " " << key << " recv S2S say " << username << " " << channel << " '" << text << "'" << endl;
 
 		map<string,struct sockaddr_in> existing_channel_users = channels[channel].channel_type;
 		map<string,struct sockaddr_in>::iterator channel_user_iter;
 		for(channel_user_iter = existing_channel_users.begin(); channel_user_iter != existing_channel_users.end(); channel_user_iter++){
-			//cout << "key: " << channel_user_iter->first << endl;
+			cout << "key: " << channel_user_iter->first << endl;
 
 			ssize_t bytes;
 			void *send_data;
@@ -529,11 +529,12 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 				//printf("Message sent\n");
 			}
 		}
+
 		// now we need to send msg to all the users in "channel"
 	    map<string,struct sockaddr_in> channel_serv = channels[channel].channel_servers;
 	    map<string,struct sockaddr_in>::iterator sock_iter;
 	    for (sock_iter = channel_serv.begin(); sock_iter != channel_serv.end(); sock_iter++){
-		    printf("DEBUG: %s\n", sock_iter->first.c_str());
+		    printf("DEBUG: sock key: %s \t key: %s\n", sock_iter->first.c_str(), key.c_str());
 		    if (sock_iter->first != key){
 		    	ssize_t bytes;
 				void *send_data;
@@ -726,6 +727,7 @@ void handle_join_message(void *data, struct sockaddr_in sock){
 				//printf("DEBUG: send_join()");
 				string server_name = sock_iter->first;
 				//struct sockaddr_in sock;
+				cout << server_ip_port << " " << key << " recv Request join " << username << " " << channel << endl;
 				send_join(server_name, channel, sock_iter->second);
 			}
 		}
@@ -738,7 +740,6 @@ void handle_join_message(void *data, struct sockaddr_in sock){
 			channels[channel].channel_type[username] = sock;
 			//cout << "joining exisitng channel" << endl;
 		}
-		cout << server_ip_port << " " << key << " recv Request join " << username << " " << channel << endl;
 		//cout << "server: " << username << " joins channel " << channel << endl;
 	}
 	//check whether the user is in usernames
@@ -972,6 +973,7 @@ void handle_say_message(void *data, struct sockaddr_in sock){
 			    map<string,struct sockaddr_in> channel_serv = channels[channel].channel_servers;
 			    map<string,struct sockaddr_in>::iterator sock_iter;
 			    for (sock_iter = channel_serv.begin(); sock_iter != channel_serv.end(); sock_iter++){
+			    	//printf("DEBUG: sock: %s \t key: %s\n", sock_iter->first.c_str(), key.c_str());
 			    	ssize_t bytes;
 					void *send_data;
 					size_t len;
