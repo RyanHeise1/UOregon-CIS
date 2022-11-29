@@ -103,7 +103,7 @@ void on_alarm(int signal);
 // Globals
 int delay_in_seconds = 60; /* Timer for server to renue subscription */
 string server_ip_port;
-std::vector<unsigned long long int> users_id;
+vector<unsigned long long int> users_id;
 struct sigaction act;
 
 int main(int argc, char *argv[]){
@@ -455,6 +455,7 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 	// https://stackoverflow.com/questions/571394/how-to-find-out-if-an-item-is-present-in-a-stdvector
 	// check if id is in vector
 	unsigned long long int id = msg->req_id;
+	//if (users_id.find(id) != users_id.end())
 	if (find(users_id.begin(), users_id.end(), id) != users_id.end()){
 		// id was found
 		// discard the Say message and sends a Leave message to the sender
