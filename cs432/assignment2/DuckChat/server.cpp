@@ -93,9 +93,9 @@ void handle_keep_alive_message(struct sockaddr_in sock);
 void send_error_message(struct sockaddr_in sock, string error_msg);
 
 /* Functions to handle Server -> Server message */
-void process_ss_join_message(void *data, struct sockaddr_in sock);
-void process_ss_leave_message(void *data, struct sockaddr_in sock);
-void process_ss_say_message(void *data, struct sockaddr_in sock);
+void server_join_msg(void *data, struct sockaddr_in sock);
+void server_leave_msg(void *data, struct sockaddr_in sock);
+void server_say_msg(void *data, struct sockaddr_in sock);
 //void process_ss_who_message(void *data, struct sockaddr_in sock);
 void send_join(string id, string channel_name, struct sockaddr_in sock);
 void on_alarm(int signal);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]){
 	
 	/* We know argc has to be > 3 from P1. In P2, the ammount of args should be an odd number of args */
 	//printf("DEBUG: check argc\n");
-	if (((argc + 1) % 2) != 0 || argc < 3){ 
+	if ((argc % 2) == 0 || argc < 3){ 
 		printf("Usage: ./server ix 5000 ix 5001\n");
 		exit(1);
 	}
@@ -165,6 +165,7 @@ int main(int argc, char *argv[]){
 		tmp_server = ip + "." + to_string(tmp.sin_port);
 		//printf("MAP DEBUG: ip.port = %s\n", server_ip_port.c_str());
 		//printf("MAP DEBUG: adding server to map and setting active\n");
+		//cout << "DEBUG: " << server_ip_port <<  " adding " << tmp_server << " to tree" << endl;
 		server_mp[tmp_server] = tmp; /* Add server to tree */
 		active_servers[tmp_server] = 0; /* Set server to active */
 	}
@@ -346,15 +347,15 @@ void handle_socket_input(){
 		}
 		else if (message_type == REQ_SS_JOIN){
 			//printf("DEBUG: REQ_SS_JOIN\n");
-			process_ss_join_message(data, recv_client);
+			server_join_msg(data, recv_client);
 		}
 		else if (message_type == REQ_SS_LEAVE){
 			//printf("DEBUG: REQ_SS_LEAVE\n");
-			process_ss_leave_message(data, recv_client);
+			server_leave_msg(data, recv_client);
 		}
 		else if (message_type == REQ_SS_SAY){
 			//printf("DEBUG: REQ_SS_SAY\n");
-			process_ss_say_message(data, recv_client);
+			server_say_msg(data, recv_client);
 		}
 		else{
 			//send error message to client
@@ -363,7 +364,7 @@ void handle_socket_input(){
 	}
 }
 
-void process_ss_join_message(void *data, struct sockaddr_in sock){
+void server_join_msg(void *data, struct sockaddr_in sock){
 	//get message fields
 	struct request_ss_join* msg; //ERROR WAS HERE request_join instead of request_ss_join ;(
 	msg = (struct request_ss_join *)data;
@@ -376,23 +377,28 @@ void process_ss_join_message(void *data, struct sockaddr_in sock){
  	
 	string key = ip + "." + to_string(port);
 	active_servers[key] = 1;
-	cout << server_ip_port << " " << key << " recv S2S Join " << channel << endl;
 	// add sender server to list of servers for channel
 	map<string, struct users>::iterator channel_iter;
 
 	// check to see if channel is already in server
 	channel_iter = channels.find(channel);
 	if (channel_iter == channels.end()) {
+		cout << server_ip_port << " " << key << " recv S2S Join " << channel << endl;
 		//printf("DEBUG: Not able to find channel %s\n", channel.c_str());
 		//ip+port not recognized - create new channel and broadcast to other servers
 		map<string, struct sockaddr_in> new_channel;
 		new_channel[key] = sock;
 		channels[channel].channel_servers = new_channel;
 		// loop through servers and send join message
-		for (map<string,struct sockaddr_in>::iterator sock_iter = server_mp.begin(); sock_iter != server_mp.end(); sock_iter++){
-			//string server_info = sock_iter->first;
-			struct sockaddr_in sock = sock_iter->second;
-			send_join(sock_iter->first, channel, sock);
+		map<string,struct sockaddr_in>::iterator sock_iter;
+		for (sock_iter = server_mp.begin(); sock_iter != server_mp.end(); sock_iter++){
+			//cout << "DEBUG: " << sock_iter->first << " sending join to " << key << endl;
+			if (sock_iter->first != key){
+				//string server_info = sock_iter->first;
+				struct sockaddr_in sock = sock_iter->second;
+				//channels[channel].channel_servers[key] = sock;
+				send_join(sock_iter->first, channel, sock);
+			}
 		}
 	}
 	else{
@@ -402,7 +408,7 @@ void process_ss_join_message(void *data, struct sockaddr_in sock){
 	}
 }
 
-void process_ss_leave_message(void *data, struct sockaddr_in sock){
+void server_leave_msg(void *data, struct sockaddr_in sock){
 	//get message fields
 	struct request_ss_leave* msg;
 	msg = (struct request_ss_leave*)data;
@@ -441,7 +447,7 @@ void process_ss_leave_message(void *data, struct sockaddr_in sock){
 	cout << server_ip_port << " " << key << " recieved S2S Leave from " << channel << endl;
 }
 
-void process_ss_say_message(void *data, struct sockaddr_in sock){
+void server_say_msg(void *data, struct sockaddr_in sock){
 	struct request_ss_say* msg;
 	msg = (struct request_ss_say*)data;
 
@@ -458,7 +464,7 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 	unsigned long long int id = msg->req_id;
 	unsigned long long int i;
 	for (i = 0; i < users_id.size(); i++){
-		cout << users_id[i] << endl;
+		//cout << users_id[i] << endl;
 		if (users_id[i] == id){
 			found = 1;
 		}
@@ -482,7 +488,7 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 		// send leave msg
 		cout << server_ip_port << " " << key << " send S2S Leave " << channel << endl;
 		bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&sock, sizeof sock);
-
+		channels.erase(channels.find(channel));
 		if (bytes < 0){
 			perror("Leave Message failed\n"); //error
 		}
@@ -503,55 +509,19 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 
 		map<string,struct sockaddr_in> existing_channel_users = channels[channel].channel_type;
 		map<string,struct sockaddr_in>::iterator channel_user_iter;
-		for(channel_user_iter = existing_channel_users.begin(); channel_user_iter != existing_channel_users.end(); channel_user_iter++){
-			cout << "key: " << channel_user_iter->first << endl;
-
-			ssize_t bytes;
-			void *send_data;
-			size_t len;
-
-			struct text_say send_msg;
-			send_msg.txt_type = TXT_SAY;
-
-			const char* str = channel.c_str();
-			strcpy(send_msg.txt_channel, str);
-			str = username.c_str();
-			strcpy(send_msg.txt_username, str);
-			str = text.c_str();
-			strcpy(send_msg.txt_text, str);
-			//send_msg.txt_username, *username.c_str();
-			//send_msg.txt_text,*text.c_str();
-			send_data = &send_msg;
-
-			len = sizeof send_msg;
-
-			//cout << username <<endl;
-			struct sockaddr_in send_sock = channel_user_iter->second;
-
-
-			//bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, fromlen);
-			bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, sizeof send_sock);
-
-			if (bytes < 0){
-				perror("SS say Message failed\n"); //error
-			}
-			else{
-				//printf("Message sent\n");
-			}
-		}
-
-		// now we need to send msg to all the users in "channel"
-	    map<string,struct sockaddr_in> channel_serv = channels[channel].channel_servers;
+		map<string,struct sockaddr_in> channel_serv = channels[channel].channel_servers;
 	    map<string,struct sockaddr_in>::iterator sock_iter;
-	    for (sock_iter = channel_serv.begin(); sock_iter != channel_serv.end(); sock_iter++){
-		    printf("DEBUG: sock key: %s \t key: %s\n", sock_iter->first.c_str(), key.c_str());
-		    if (sock_iter->first != key){
-		    	ssize_t bytes;
+	    // make sure you can forward message somewhere
+		if(existing_channel_users.size() > 0 || channel_serv.size() > 1){
+			for(channel_user_iter = existing_channel_users.begin(); channel_user_iter != existing_channel_users.end(); channel_user_iter++){
+				//cout << "key: " << channel_user_iter->first << endl;
+
+				ssize_t bytes;
 				void *send_data;
 				size_t len;
 
-				struct request_ss_say send_msg;
-				send_msg.req_type = REQ_SS_SAY;
+				struct text_say send_msg;
+				send_msg.txt_type = TXT_SAY;
 
 				const char* str = channel.c_str();
 				strcpy(send_msg.txt_channel, str);
@@ -567,19 +537,89 @@ void process_ss_say_message(void *data, struct sockaddr_in sock){
 
 				//cout << username <<endl;
 				struct sockaddr_in send_sock = channel_user_iter->second;
-				cout << server_ip_port << " " << key << " send S2S say " << username << " " << channel << " '" << text << "'" << endl;
+
+
 				//bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, fromlen);
 				bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, sizeof send_sock);
 
 				if (bytes < 0){
-					perror("SS to servers Message failed\n"); //error
+					perror("SS say Message failed\n"); //error
 				}
 				else{
 					//printf("Message sent\n");
-					//cout << server_ip_port << " "  << key << " send S2S say " << username << channel <<  "'" << text << "'" << " in channel " << channel << endl;
 				}
 			}
-	    }
+			// now we need to send msg to all the users in "channel"
+		    for (sock_iter = channel_serv.begin(); sock_iter != channel_serv.end(); sock_iter++){
+			    //printf("DEBUG: sock key: %s \t key: %s\n", sock_iter->first.c_str(), key.c_str());
+			    if (sock_iter->first != key){
+			    	ssize_t bytes;
+					void *send_data;
+					size_t len;
+
+					struct request_ss_say send_msg;
+					send_msg.req_type = REQ_SS_SAY;
+
+					const char* str = channel.c_str();
+					strcpy(send_msg.txt_channel, str);
+					str = username.c_str();
+					strcpy(send_msg.txt_username, str);
+					str = text.c_str();
+					strcpy(send_msg.txt_text, str);
+					send_msg.req_id = id;
+					//send_msg.txt_username, *username.c_str();
+					//send_msg.txt_text,*text.c_str();
+					send_data = &send_msg;
+
+					len = sizeof send_msg;
+
+					//cout << username <<endl;
+					struct sockaddr_in send_sock = sock_iter->second;
+					string ip = inet_ntoa(send_sock.sin_addr);
+
+					int port = send_sock.sin_port;
+
+				 	char port_str[6];
+				 	sprintf(port_str, "%d", port);
+					string send_key = ip + "." +port_str;
+
+					cout << server_ip_port << " " << send_key << " send S2S say " << username << " " << channel << " '" << text << "'" << endl;
+					//bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, fromlen);
+					bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&send_sock, sizeof send_sock);
+
+					if (bytes < 0){
+						perror("SS to servers Message failed\n"); //error
+					}
+					else{
+						//printf("Message sent\n");
+						//cout << server_ip_port << " "  << key << " send S2S say " << username << channel <<  "'" << text << "'" << " in channel " << channel << endl;
+					}
+				}
+		    }
+		}else{
+			/*size_t len;
+			ssize_t bytes;
+
+			//get message fields
+			struct request_ss_leave send_leave;
+			send_leave.req_type = REQ_SS_LEAVE;
+			string channel = msg->txt_channel;
+			strcpy(send_leave.req_channel, channel.c_str());
+
+			void *send_data = &send_leave;
+			len = sizeof(send_leave);
+
+			// send leave msg
+			cout << server_ip_port << " " << key << " send S2S Leave " << channel << endl;
+			channels.erase(channels.find(channel));
+			bytes = sendto(s, send_data, len, 0, (struct sockaddr*)&sock, sizeof sock);
+			if (bytes < 0){
+				perror("Leave Message failed\n"); //error
+			}
+			else{
+				//printf("Message sent\n");
+			}*/
+		}
 	}
 }
 
@@ -960,7 +1000,7 @@ void handle_say_message(void *data, struct sockaddr_in sock){
 					}
 				}
 				cout << server_ip_port << " " << key << " recv Request say " << username << " " << channel << " '" << text << "'" << endl;
-
+				//printf("Read bytes\n");
 				// servers use their random number generator to create unique identifiers
 				// https://stackoverflow.com/questions/35726331/c-extracting-random-numbers-from-dev-urandom
 				unsigned long long int id = 0; //Declare value to store data into
@@ -978,13 +1018,13 @@ void handle_say_message(void *data, struct sockaddr_in sock){
 			    }else{ 
 			    	cout << "Failed to open /dev/urandom" << endl;
 			    }
-
+				//printf("send to all users\n");
 			    // now we need to send msg to all the users in "channel"
 			    map<string,struct sockaddr_in> channel_serv = channels[channel].channel_servers;
 			    map<string,struct sockaddr_in>::iterator sock_iter;
 			    for (sock_iter = channel_serv.begin(); sock_iter != channel_serv.end(); sock_iter++){
 			    	//printf("DEBUG: sock: %s \t key: %s\n", sock_iter->first.c_str(), key.c_str());
-			    	ssize_t bytes;
+					ssize_t bytes;
 					void *send_data;
 					size_t len;
 					struct sockaddr_in send_sock = sock_iter->second;
