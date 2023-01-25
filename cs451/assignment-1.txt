@@ -1,0 +1,106 @@
+/*
+Ryan Heise
+Assignment-1
+CS 451
+Professor Wilson
+*/
+
+/* 
+Question 1:
+*/
+SELECT fname, lname, company
+FROM customer
+WHERE company LIKE '% Sports';
+
+
+/* 
+Question 2:
+*/
+SELECT 
+    CONCAT(customer.fname, " ",customer.lname) AS customer_name, 
+    customer.city,
+    customer.state,
+    stock.description,
+    orders.order_date
+FROM orders JOIN items ON orders.order_num=items.order_num
+    INNER JOIN customer ON orders.customer_num=customer.customer_num
+    INNER JOIN stock ON items.stock_num=stock.stock_num
+WHERE orders.order_date LIKE '1998-06-%' AND items.manu_code='HSK'
+GROUP BY customer_name, city, state, description, order_date;
+
+
+/* 
+Question 3:
+*/
+SELECT sname, fname, lname
+FROM customer
+    RIGHT JOIN state ON customer.state=state.code
+ORDER BY sname;
+
+
+/* 
+Question 4:
+*/
+SELECT DISTINCT fname, lname
+FROM employee JOIN works_on ON employee.ssn=works_on.essn
+    RIGHT JOIN project ON works_on.pno=project.pnumber
+WHERE 
+    (works_on.hours <= 25 AND 
+    works_on.hours >= 8) AND
+    project.pname LIKE 'Product%';
+
+
+/* 
+Question 5:
+*/
+SELECT department.dname, dependent.dependent_name
+FROM employee JOIN dependent ON employee.ssn=dependent.essn
+    RIGHT JOIN department ON employee.dno=department.dnumber
+ORDER BY department.dname DESC;
+
+
+/* 
+Question 6:
+*/
+SELECT 
+    CONCAT(e1.fname, " ", e1.lname) AS supervisor, 
+    CONCAT(e2.fname, " ", e2.lname) AS supervisee
+FROM employee e1 JOIN employee e2 ON e1.ssn=e2.superssn
+WHERE e1.dno=4;
+
+
+/* 
+Question 7
+*/
+SELECT
+    CONCAT(customer.first_name, " ", customer.last_name) AS Customer_Name,
+    film.title,
+    rental.rental_date
+FROM customer JOIN rental ON customer.customer_id=rental.customer_id
+    JOIN inventory ON rental.inventory_id=inventory.inventory_id
+    JOIN film ON inventory.film_id=film.film_id
+WHERE rental.rental_date LIKE '2005-07-%'
+ORDER BY film.title;
+
+
+/* 
+Question 8:
+*/
+SELECT customer.first_name, customer.last_name, customer.email, payment.amount
+FROM customer JOIN payment ON customer.customer_id=payment.customer_id
+    JOIN rental ON payment.rental_id=rental.rental_id
+    JOIN inventory ON rental.inventory_id=inventory.inventory_id
+    JOIN film ON inventory.film_id=film.film_id
+    JOIN film_category ON film.film_id=film_category.film_id
+    JOIN category ON film_category.category_id=category.category_id
+WHERE payment.amount > 2 AND category.name='Family'
+ORDER BY customer.last_name
+
+
+/* 
+Question 9:
+*/
+SELECT COUNT(rental_id)
+FROM rental JOIN inventory ON rental.inventory_id=inventory.inventory_id
+    JOIN film ON inventory.film_id=film.film_id
+WHERE film.title LIKE '%MOTHER%';
